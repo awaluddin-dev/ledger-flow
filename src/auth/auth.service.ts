@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -10,12 +11,24 @@ import * as argon2 from 'argon2';
 import { Prisma } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
+import { ConfigService } from '@nestjs/config';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
+import Redis from 'ioredis';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  iat?: number;
+  exp?: number;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private config: ConfigService,
+    @Inject(REDIS_CLIENT) private redis: Redis,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -76,20 +89,64 @@ export class AuthService {
     }
 
     // 3. Generate Token (Tanda tangan digital)
-    return this.signToken(user.id, user.email);
+    return this.generateAndSaveTokens(user.id, user.email);
   }
 
-  // Helper function buat generate token
-  private async signToken(userId: string, email: string) {
-    const payload = {
-      sub: userId,
-      email,
-    };
+  async refreshToken(refreshToken: string) {
+    // 2. Verifikasi keaslian Refresh Token (Apakah ini buatan sistem kita?)
+    try {
+      const payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
+        secret: this.config.get<string>('JWT_REFRESH_SECRET') as string,
+      });
 
-    const token = await this.jwt.signAsync(payload);
+      const redisKey = `user:${payload.sub}:refresh_token`;
+      const storedToken = await this.redis.get(redisKey);
+
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new UnauthorizedException(
+          'Sesi tidak valid atau telah dicabut (Revoked)',
+        );
+      }
+
+      // 3. Jika valid, buatkan pasangan token yang baru (Token Rotation)
+      return this.generateAndSaveTokens(payload.sub, payload.email);
+    } catch (error) {
+      // Jika token expired atau manipulasi, hapus dari redis sekalian (Security)
+      console.error(error);
+      throw new UnauthorizedException(
+        'Refresh token kadaluarsa atau tidak valid',
+      );
+    }
+  }
+
+  private async generateAndSaveTokens(userId: string, email: string) {
+    const payload = { sub: userId, email };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      // Access Token (15 Menit)
+      this.jwt.signAsync(payload, {
+        secret: this.config.get<string>('JWT_SECRET') as string,
+        expiresIn: '15m',
+      }),
+      // Refresh Token (7 Hari)
+      this.jwt.signAsync(payload, {
+        secret: this.config.get<string>('JWT_REFRESH_SECRET') as string,
+        expiresIn: '7d',
+      }),
+    ]);
+
+    // Simpan Refresh Token ke Redis dengan TTL 7 hari (dalam detik)
+    const ttlInSeconds = 7 * 24 * 60 * 60;
+    await this.redis.set(
+      `user:${userId}:refresh_token`,
+      refreshToken,
+      'EX',
+      ttlInSeconds,
+    );
 
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
     };
   }
 }
