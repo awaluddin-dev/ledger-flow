@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  # 1. Database PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: ledger_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234passwordkuat
+      POSTGRES_DB: ledger_flow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+  # 2. Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ledger_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # 3. Aplikasi NestJS Kita
+  api:
+    build: .
+    container_name: ledger_api
+    ports:
+      - "3000:3000"
+    environment:
+      # Koneksi internal antar kontainer Docker
+      DATABASE_URL: "postgresql://postgres:1234passwordkuat@postgres:5432/ledger_flow?schema=learning"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: "rahasia_negara_jangan_disebar_30juta"
+      JWT_REFRESH_SECRET: "rahasia_paspor_level_dewa_30juta"
+    depends_on:
+      - postgres
+      - redis
+    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+    restart: always
+
+# Simpan data database secara permanen (agar tidak hilang saat direstart)
+volumes:
+  pgdata:

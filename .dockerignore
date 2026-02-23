@@ -1,0 +1,16 @@
+# Abaikan folder raksasa
+node_modules
+dist
+
+# Abaikan file environment (Keamanan)
+.env
+
+# Abaikan file Git & Log
+.git
+.gitignore
+npm-debug.log
+yarn-error.log
+
+# Abaikan readme & test
+README.md
+*.spec.ts
