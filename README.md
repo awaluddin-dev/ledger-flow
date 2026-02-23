@@ -39,15 +39,47 @@ Before running this project, ensure you have the following installed on your sys
 
 1. Clone the repository
 
-```bash
-git clone <your-repository-url>
-cd ledger-flow
-```
+   ```bash
+   git clone <your-repository-url>
+   cd ledger-flow
+   ```
 
 2. Configure Environment Variables
    Create a .env file in the root directory and configure the following variables:
 
-DATABASE_URL="postgresql://postgres:1234passwordkuat@postgres:5432/ledger_flow?schema=learning"
-REDIS_URL="redis://redis:6379"
-JWT_SECRET="your_secure_jwt_secret"
-JWT_REFRESH_SECRET="your_secure_refresh_secret"
+   ```bash
+   DATABASE_URL="postgresql://postgres:1234passwordkuat@postgres:5432/ledger_flow?schema=learning"
+   REDIS_URL="redis://redis:6379"
+   JWT_SECRET="your_secure_jwt_secret"
+   JWT_REFRESH_SECRET="your_secure_refresh_secret"
+   ```
+
+3. Build and Run via Docker
+   The application, along with PostgreSQL and Redis, can be started with a single command:
+
+   ```bash
+     docker-compose up -d --build
+   ```
+
+This command will automatically provision the database, run Prisma migrations, and start the Fastify server.
+
+API Documentation
+Once the container is running, the interactive API documentation is available at:
+
+<http://localhost:3000/api/docs>
+
+You can use the Swagger UI to test the endpoints (Registration, Login, TopUp, Transfer, and History).
+
+Running Tests
+To run the automated unit tests locally (Node.js and pnpm required on the host machine):
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run tests
+pnpm test
+```
+
+License
+This project is licensed under the MIT License.
