@@ -40,7 +40,7 @@ Before running this project, ensure you have the following installed on your sys
 1. Clone the repository
 
    ```bash
-   git clone <your-repository-url>
+   git clone <https://github.com/awaluddin-dev/ledger-flow>
    cd ledger-flow
    ```
 
