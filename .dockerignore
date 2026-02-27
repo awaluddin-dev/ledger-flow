@@ -14,3 +14,8 @@ yarn-error.log
 # Abaikan readme & test
 README.md
 *.spec.ts
+*.md
+.dockerignore
+.gitignore
+/tmp
+/generated

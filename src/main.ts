@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -6,12 +6,24 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
+import { TransformInterceptor } from './common/transform.interceptor';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
+  app.use(helmet());
+  app.use(compression());
+  app.enableCors({
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -19,6 +31,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   const config = new DocumentBuilder()
     .setTitle('LedgerFlow API')
@@ -30,9 +43,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(3000, '0.0.0.0');
-  console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`Swagger UI is running on: ${await app.getUrl()}/api/docs`);
+  const port = process.env.PORT || 3000;
+  const host = process.env.HOST || '127.0.0.1';
+
+  await app.listen(port, host);
+  logger.log(`Application is running on: ${await app.getUrl()}`);
+  logger.log(`Swagger UI is running on: ${await app.getUrl()}/api/docs`);
 }
 bootstrap().catch((error) => {
   console.error('Application failed to start:', error);
