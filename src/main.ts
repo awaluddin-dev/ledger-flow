@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
 import { TransformInterceptor } from './common/transform.interceptor';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -16,6 +17,7 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter(),
   );
+  app.enableShutdownHooks();
   app.use(helmet());
   app.use(compression());
   app.enableCors({
@@ -32,6 +34,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const config = new DocumentBuilder()
     .setTitle('LedgerFlow API')
@@ -50,7 +53,12 @@ async function bootstrap() {
   logger.log(`Application is running on: ${await app.getUrl()}`);
   logger.log(`Swagger UI is running on: ${await app.getUrl()}/api/docs`);
 }
+
 bootstrap().catch((error) => {
-  console.error('Application failed to start:', error);
+  Logger.error(
+    'Application failed to start',
+    error instanceof Error ? error.stack : error,
+    'System',
+  );
   process.exit(1);
 });
