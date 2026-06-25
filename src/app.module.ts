@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
-import { TransactionModule } from './transaction/transaction.module';
 import { RedisModule } from './redis/redis.module';
+import { AuthFeatureModule } from './features/auth/auth-feature.module';
+import { TransactionModule } from './features/transactions/transaction.module';
 
 @Module({
   imports: [
@@ -14,7 +14,7 @@ import { RedisModule } from './redis/redis.module';
     }),
     RedisModule,
     PrismaModule,
-    AuthModule,
+    AuthFeatureModule,
     TransactionModule,
   ],
   controllers: [AppController],
